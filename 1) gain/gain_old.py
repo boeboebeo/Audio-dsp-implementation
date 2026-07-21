@@ -12,10 +12,18 @@
     
 2) 레벨 조정
     => dB 단위로 조절할 수 있도록 dB 로 변환
+    **근데 실무 관례상 순서가 반대다. 사용자가 dB로 입력을 하면 linear 로 변환해서 실제 신호에 곱함
+     (실무 순서에서는)
+    - dB 가 primary parameter
 
 3) wav.file 출력
 
 4) FFT 비교
+
+=> 전체적으로 코드 정확성, reusability, edge case(gain=0, gain<0 같은 경계값)
+    을 더 유의하면서 정리해봐야 할듯! 
+    **정상 케이스 (Gain>0) 만 염두에 두고 짜여진 느낌이면 경계값 처리 누락이 에러가 뜰 수 있음
+      (실무에서의 오디오 DSP 버그 상당수가 0, 음수, 무한대 에서 나오게 됨)
 
 """
 
@@ -133,11 +141,13 @@ def apply_gain():
         apply_gain = sine_wave * level
             # 이건 근데 함수 이름과 변수 이름을 다르게 가지는게 좋을듯 차라리 -> "output"
         dB = 20*np.log10(np.abs(level))
+            # 사실상 여기서 np.abs를 처리해놓았기 때문에 음수 linear_gain 들도 동일하게 변조가 됨
 
         # wav file 저장
-        sf.write(f"1) gain/output/{dB:.3f} dB_sine_gain.wav", apply_gain, 48000)
+        sf.write(f"1) gain/output/{dB:.3f} dB_sine_gain.wav", apply_gain, 48000, subtype='FLOAT')
             # PCM audio 에서는 -1 ~ +1까지만 레벨이 조절될 수 있기때문에 
             # 매우 많이 넘어가게 되면 바로 클리핑 
+            # , 48000, subtype='FLOAT' : 처리로, 헤드룸을 보존하면서 나중에 FFT 분석하도록 함 
 
         # original_wave - visualization
         # original signal
@@ -183,10 +193,10 @@ def apply_gain():
     for index, level in enumerate(gain):
 
         apply_gain = white_noise * level
-        dB = 20*np.log10(level)
+        dB = 20*np.log10(np.abs(level))
 
         # wav file 저장
-        sf.write(f"1) gain/output/{dB:.3f} dB_noise_gain.wav", apply_gain, 48000)
+        sf.write(f"1) gain/output/{dB:.3f} dB_noise_gain.wav", apply_gain, 48000, 48000, subtype='FLOAT')
             # PCM audio 에서는 -1 ~ +1까지만 레벨이 조절될 수 있기때문에 
             # 매우 많이 넘어가게 되면 바로 클리핑 
 
@@ -199,6 +209,8 @@ def apply_gain():
             ax.set_ylabel('Amplitude')
             ax.set_xlabel('time')
             ax.set_ylim(-3, 3)
+                # 근데 이렇게 할지 게인이 높아지면 표현이 안되므로
+                # ylim = max(abs(g) for g in gain) * 1.2 -> 이런식의 동작이 더 안전
             ax.grid(True, alpha=0.3)
 
         # gain up
@@ -223,8 +235,6 @@ def apply_gain():
 
     plt.tight_layout()
     plt.show()
-
-
 
 
 
