@@ -1,7 +1,7 @@
 """
 
 git add .
-git commit -m "docs: day 11-14 review"
+git commit -m "feat: gain fundamental structure"
 git push origin main
 
 wip : work in progress. 아직 작업중(미완인 프로젝트 올릴때 쓰는 커밋 컨벤션(관습))
