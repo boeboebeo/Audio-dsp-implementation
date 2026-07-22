@@ -1,0 +1,1 @@
+// Gain.h : Gain 알고리즘을 담음 (Header)
