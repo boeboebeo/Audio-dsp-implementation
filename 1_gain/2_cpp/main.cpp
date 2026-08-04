@@ -21,6 +21,7 @@
 #include "Gain.h"   // 내가 만든 파일을 가지고옴. 만약 Gain.h 파일 안에 class Gain { ..} 이 들어있다면
                     // main.cpp 에서는 #include "Gain.h" 만으로 위의 파일에서의 Gain 클래스를 사용할 수 있다.
 #include "WavWriter.h"
+#include <sstream>
 
 
 
@@ -175,7 +176,16 @@ void applyGainAndSave (const std::vector<float>& inputWave, //const : 값 못 �
     std::cout << "\n"; //줄바꿈
 
     const std::string invertTag = invert ? "_inv" : ""; //invert했으면 _inv 붙이고 아니면 없음
-    const std::string filename = waveName + "_" + std::to_string(dB) + "dB" + invertTag + ".wav";
+
+    std::ostringstream dbText;
+    dbText << std::fixed << std::setprecision(2) << dB;
+        // 이거는 파일 이름용
+        // std::cout <<"hello"; : 는 hello 를 출력
+        // dbText << std::fixed <<std::setprecision(2)<<dB; 는 dbText라는 문자열을 담아가는 통에 값을 넣는것.
+        // 위에 #include ostringstream 을 사용했기 때문에 쓰임
+        // >> 는 데이터 꺼내올때 많이 쓰임
+
+    const std::string filename = waveName + "_" + dbText.str() + "dB" + invertTag + ".wav";
     dsp::writeMonoWav16 (filename, output, static_cast<uint32_t> (sampleRate));
 
 
@@ -305,5 +315,26 @@ return buffer
 
 1) 객체 (Object) : 데이터와 그 데이터를 다루는 기능을 함께 가진것
 2) 함수 (Function) : 입력을 받아 계산해서 결과를 돌려주는 코드
+
+*/
+
+/* ReadMe 에서 보여주는 설명들 (꼭 읽어보기)
+
+1) 왜 magnitude=0인데 peak가 0이 아니라 0.937인가?
+버그가 아니라 스무딩(ramp)이 실제로 동작하고 있다는 증거입니다. Gain 객체는 기본적으로 currentGain = 1.0에서 시작하고, setGainLinear(0.0)을 호출한 순간부터 20ms에 걸쳐 1.0 → 0.0으로 서서히 내려갑니다. 그래서 파일 맨 앞부분은 아직 게인이 덜 내려간 상태(1.0에 가까운 값)라 peak가 1.0에 근접하게 찍히는 겁니다. 이건 실제 JUCE의 juce::dsp::Gain도 정확히 동일하게 동작하는 부분이라, 지금 이 결과를 이해하고 넘어가시면 나중에 JUCE 버전에서 똑같은 현상을 봐도 "버그인가?" 하고 헤매지 않으실 거예요.
+
+2) dB 계산에 floor(-100dB) 적용 — magnitude=0일 때 -inf가 아니라 -100.000이 출력됩니다.
+게인 변화에 스무딩(ramp) 적용 — Python 버전은 순간적으로 곱했지만, 여기서는 20ms에 걸쳐 부드럽게 전환되도록 만들어서 실시간 오디오에서 클릭 노이즈를 막는 실무 관행을 미리 연습합니다.
+WAV 저장을 표준 라이브러리로 직접 구현 — soundfile 같은 외부 라이브러리 대신 <fstream>만으로 44바이트 WAV 헤더를 직접 씀 (파일 포맷을 한번 직접 만들어보는 연습)
+
+
+**다음 단계 (JUCE 연결)
+
+이 Gain 클래스를 그대로 JUCE 프로젝트의 PluginProcessor.h에 옮겨서 gainProcessor.processSample(sample) 대신 myGain.processSample(sample)로 바꿔치기만 하면 개념적으로는 동일하게 동작합니다. 그 다음 단계로 아래 두 가지를 비교해보시면 좋습니다.
+
+지금 만든 dsp::Gain (직접 짠 스무딩 로직)
+JUCE의 juce::dsp::Gain<float> (내부적으로 SmoothedValue 클래스를 사용)
+
+두 구현이 같은 입력에 대해 같은 출력을 내는지 확인해보면, "라이브러리가 대신 해주는 일"이 정확히 뭔지 체감하기 좋은 연습이 됩니다.
 
 */
