@@ -36,6 +36,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import soundfile as sf
+
 
 
 def main():
@@ -53,14 +55,30 @@ def main():
 
     t = np.linspace(0, duration, num_samples, endpoint=False)
 
-    create_sine(freq, t) #여기서 넣어주는 값은 실제 값
-    create_white_noise(num_samples)
-    create_impulse(num_samples)
+    #input_signal 생성
+    input_sine = create_sine(freq, t) #여기서 넣어주는 값은 실제 값
+    input_noise = create_white_noise(num_samples)
+    input_impulse = create_impulse(num_samples)
 
     delay_samples = ms_to_samples(
         delay_ms,
         sample_rate
     )
+
+    #delay
+    output_signal = apply_delay_with_feedback(
+        input_impulse,
+        delay_samples,
+        mix,
+        feedback
+    )
+
+    #save wav
+    save_wav(
+        delay_ms, feedback, output_signal, sample_rate
+    )
+
+
 
 
 #입력신호 생성
@@ -195,20 +213,33 @@ def ms_to_samples(delay_ms, sample_rate):
     delay_samples = int((delay_ms / 1000) * sample_rate)
 
     return delay_samples
+
     
 
 
-# Output level 조절할때 말고는 안쓰임
-# def db_to_linear():
-    
+def save_wav(delay_ms, feedback, output, sample_rate):
+    sf.write(f"delay_test(delay time:{delay_ms}ms, feedback:{feedback*100}%).wav",
+             output, sample_rate, subtype = "FLOAT") 
+            # subtype="FLOAT" : 32-bit floating point wav 로 저장한다는 뜻 
+            #int16 사용할 경우, 32767 이상이면 바로 잘려버림
 
 
-def save_wav():
+if __name__ == "__main__":
+    main()
+    #이게 함수 위에 있었더니 애초에 그 밑에 있는 함수들을 인지못함 
+    #python 은 위 -> 아래로 읽어나가기 때문에 이 표시는 함수 맨 아래에 두기
+    #직접 실행할때만 사용되는 코드 (다른 프로젝트에서 main() 실행안하고 함수만 가져다가 쓸때!)
 
-def plot_waveform():
 
-def plot_spectrum():
-    return 
+
+
+# def plot_waveform():
+
+# def plot_spectrum():
+#     return 
+
+
+
 
 
 """ CHANGE LOG
