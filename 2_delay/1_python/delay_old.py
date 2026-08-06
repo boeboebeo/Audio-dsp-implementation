@@ -37,6 +37,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import soundfile as sf
+import os
 
 
 
@@ -47,9 +48,9 @@ def main():
     freq = 1000 #Hz
     duration = 1.0 #s
 
-    delay_ms = 100
+    # delay_ms = 100 #밑에서 한번에 처리할 예정
     mix = 0.5  # 0 ~ 1.0 까지의 범위 (%)
-    feedback = 0.5 # 0 ~ 1.0까지의 범위 (%)
+    # feedback = 0.2 # 0 ~ 1.0까지의 범위 (%)
 
     num_samples = int(sample_rate*duration) 
 
@@ -60,23 +61,40 @@ def main():
     input_noise = create_white_noise(num_samples)
     input_impulse = create_impulse(num_samples)
 
-    delay_samples = ms_to_samples(
-        delay_ms,
-        sample_rate
-    )
+    #한번에 처리
+    signals = [
+        ("sine", input_sine),
+        ("noise", input_noise),
+        ("impulse", input_impulse)
+    ]
 
-    #delay
-    output_signal = apply_delay_with_feedback(
-        input_impulse,
-        delay_samples,
-        mix,
-        feedback
-    )
+    delay_times = [50, 100, 300]
+    feedbacks = [0.3, 0.6, 0.9]
 
-    #save wav
-    save_wav(
-        delay_ms, feedback, output_signal, sample_rate
-    )
+    for signal_name, signal in signals:
+        for delay_ms in delay_times:
+            for feedback in feedbacks:
+
+                #delay time circulation
+                delay_samples = ms_to_samples(
+                    delay_ms,
+                    sample_rate
+                )
+
+                #delay apply
+                output_signal = apply_delay_with_feedback(
+                    signal,
+                    delay_samples,
+                    mix,
+                    feedback
+                )
+
+                #save wav
+                save_wav(
+                    signal_name, delay_ms, feedback, output_signal, sample_rate
+                )
+
+
 
 
 
@@ -122,7 +140,9 @@ def apply_delay(input_signal, delay_samples, mix):
 def apply_delay_with_feedback(input_signal, delay_samples, mix, feedback):
     
     #출력
-    output = np.zeros(len(input_signal))
+    #ouput length 가 짧으면 딜레이로 인해서 생기는 늘어난 시간은 나오지 않게됨 
+    output_length = len(input_signal) + delay_samples*10
+    output = np.zeros(output_length)
 
     #Delay buffer
     delay_buffer = np.zeros(len(input_signal) + delay_samples)
@@ -141,12 +161,12 @@ def apply_delay_with_feedback(input_signal, delay_samples, mix, feedback):
 
         #Mix
         output[i] = dry_signal * (1-mix) + delayed * mix
+        
 
         #Feedback 을 적용해서 미래 위치에 저장
         #delay buffer 는 Feedback loop 내부의 상태 (state) <- 다음 반복을 위한 에너지를 저장하는 곳
-        delay_buffer[i+delay_samples] += dry_signal + delayed * feedback
-            #그냥 =을 쓰면 기존에 그 위치에 저장되어 있던 값이 덮어써져 버림
-            #실제 Delay 에서는 원래 들어있던 echo + 새롭게 생성된 echo가 합쳐져야 함
+        delay_buffer[i+delay_samples] = dry_signal + delayed * feedback
+            
 
     return output
 
@@ -191,37 +211,48 @@ i = 3
 : delay_buffer [0 0 0 1 0 0 1.5 0 0.. ]
 """
             
-        
-"""
-    delayed[i] = input_signal[i-delay_samples]
 
-    example. delay_sample = 3일때
-
-    0 1 2 3 4 5 6 (index)
-    1 0 0 0 0 0 0 (input_signal)
-    ...
-    0 0 0 1 0 0 0 (output_signal) <- index 3일때 input[0]이 output[3]으로 옴
-
-    i=0) delayed[0] = input_signal[0-3] = 0
-    i=3) delayed[3] = input_signal[3-3] = 1 
-
-    """
 
 #실제 사용자가 조절하는 값은 Time -> samples 로 변환
 #(사람이 조절하는 물리단위 -> DSP 가 계산하는 내부 단위로 변환하는 단계가 항상 존재함)
 def ms_to_samples(delay_ms, sample_rate):
     delay_samples = int((delay_ms / 1000) * sample_rate)
 
+    delay_samples = max(1, delay_samples)
+        # 만약 0 sample 딜레이 일 경우, 현재 인덱스 자리에 지연음이 자리잡아 버림
+        # 따라서 최소 1 sample 을 보장하게 만듦
+        # 사용자가 0ms 를 선택해도 실제로는 1 sample delay 가 생기지만 
+        # 거의 20.8 micro second 여서 매우 짧음
+
     return delay_samples
 
     
 
 
-def save_wav(delay_ms, feedback, output, sample_rate):
-    sf.write(f"delay_test(delay time:{delay_ms}ms, feedback:{feedback*100}%).wav",
+def save_wav(signal_name, delay_ms, feedback, output, sample_rate):
+
+    output_dir = "2_delay/1_python/testwav"
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    #file name (wav 저장할때 쓸 용도)
+    file_name = (
+        f"{signal_name}"
+        f"_delay{delay_ms}ms"
+        f"_fb{int(feedback*100)}%.wav"
+    )   # file name 은 하나로 이어진거지 튜플이 아니기 때문에 ',' 쉼표 없애기
+
+    filepath = os.path.join(output_dir, file_name)
+
+
+    sf.write(filepath,
              output, sample_rate, subtype = "FLOAT") 
-            # subtype="FLOAT" : 32-bit floating point wav 로 저장한다는 뜻 
+            #subtype="FLOAT" : 32-bit floating point wav 로 저장한다는 뜻 
             #int16 사용할 경우, 32767 이상이면 바로 잘려버림
+            #위에서 filepath = .. 에서 이미 file_name 넘겼기 때문에 또 넘기면 안됨
+
+# def plot_waveform():
+
 
 
 if __name__ == "__main__":
@@ -233,7 +264,7 @@ if __name__ == "__main__":
 
 
 
-# def plot_waveform():
+
 
 # def plot_spectrum():
 #     return 
@@ -249,6 +280,29 @@ if __name__ == "__main__":
     => readIndex, writeIndex 가 따로 존재함
     : 현재 python 에서는 미래의 index 에 딜레이되는 사운드를 저장해두고서 
         시간이 지나 해당 index (i + delay_samples)가 되었을때 영향을 받게 함
+
+    : if __name__ = "__main__":
+        main() 위치 조정
+
+2) 260806 
+    + output tail 은 어떻게 처리하면 좋을지?
+    + feedback 이 1이상의 값이 되어버리면 점점 소리가 증폭
+        => 이걸 어떻게 해결?
+        feedback = np.clip(feedback, 0, 0.99)    ?
+
+    + 만약 delay_samples = 0 이라면 
+    delay_buffer[i+delay_samples] = dry_signal + delayed * feedback
+    
+    : 위 코드에서 바로 원본 타이밍 자리에 셋팅이 되어버린다. 
+    => if delay_samples < 1 일때 어떻게 해야할지 따로 처리해줘야함
+
+    + sine, noise, impulse 한번에 처리하는 방법
+
+
+3) 260807
+
+    ~ 왜... 딜레이타임에 따라서 총 output wav 의 길이가 달라지지? 일정하게 하려면
+    +plot 구성하기
 
 
     """
