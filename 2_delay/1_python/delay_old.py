@@ -71,6 +71,12 @@ def main():
     delay_times = [50, 100, 300]
     feedbacks = [0.3, 0.6, 0.9]
 
+    results = {
+        "impulse": [],
+        "sine" : [],
+        "noise" : []
+    } #빈 배열 하나 만들어서 그 내용 다 모을 예정
+
     for signal_name, signal in signals:
         for delay_ms in delay_times:
             for feedback in feedbacks:
@@ -94,7 +100,15 @@ def main():
                     signal_name, delay_ms, feedback, output_signal, sample_rate
                 )
 
+                #result 모아두기 -> plot 하려고!
+                results[signal_name].append({
+                    "delay_ms" : delay_ms,
+                    "feedback" : feedback,
+                    "output" : output_signal # '=' 아니고 ':' 이여야 함!
+                })
 
+    #plot 
+    plot_delay(results, sample_rate)
 
 
 
@@ -144,16 +158,26 @@ def apply_delay_with_feedback(input_signal, delay_samples, mix, feedback):
     output_length = len(input_signal) + delay_samples*10
     output = np.zeros(output_length)
 
+        #input_signal 은 len() 필요
+        #output_length 는 이미 int 라서 len() 없어야 함 (이미 길이 숫자)
+
     #Delay buffer
-    delay_buffer = np.zeros(len(input_signal) + delay_samples)
+    delay_buffer = np.zeros(len(input_signal) + delay_samples*10)
         #delay_samples 만큼의 index 더 늘린 공간
     
 
     # 2. Delay + Feedback 계산
-    for i in range(len(input_signal)):
+    for i in range(output_length):
+        #이렇게 계산해줘야( range(output_length) ) <- input_signal 길이를 넘어가도 계산이 됨 (feedback 부분)
 
-        #현재 입력
-        dry_signal = input_signal[i]
+
+        #현재 입력 (입력이 아직 존재한다면)
+        if i < len(input_signal):
+            dry_signal = input_signal[i]
+        
+        else:
+            dry_signal = 0.0
+
 
         #Delay buffer 에서 읽기
         delayed = delay_buffer[i] 
@@ -165,7 +189,8 @@ def apply_delay_with_feedback(input_signal, delay_samples, mix, feedback):
 
         #Feedback 을 적용해서 미래 위치에 저장
         #delay buffer 는 Feedback loop 내부의 상태 (state) <- 다음 반복을 위한 에너지를 저장하는 곳
-        delay_buffer[i+delay_samples] = dry_signal + delayed * feedback
+        if i + delay_samples < output_length:
+            delay_buffer[i+delay_samples] = dry_signal + delayed * feedback
             
 
     return output
@@ -251,7 +276,38 @@ def save_wav(signal_name, delay_ms, feedback, output, sample_rate):
             #int16 사용할 경우, 32767 이상이면 바로 잘려버림
             #위에서 filepath = .. 에서 이미 file_name 넘겼기 때문에 또 넘기면 안됨
 
-# def plot_waveform():
+
+def plot_delay(results, sample_rate):
+
+    fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+
+    for signal_name in ["impulse", "sine"]:
+
+        signal_results = results[signal_name]
+        axes = axes.flatten()
+
+        for ax, result in zip(axes, signal_results):
+
+            output = result["output"]
+            delay_ms = result["delay_ms"]
+            feedback = result["feedback"]
+
+            time = np.arange(len(output)) / sample_rate
+            
+            ax.plot(time, output)
+
+            ax.set_title(
+                f"Delay {delay_ms}ms / Feedback : {feedback}"
+            )
+
+
+    plt.tight_layout()
+    plt.show()
+
+
+    
+
+
 
 
 
@@ -284,6 +340,7 @@ if __name__ == "__main__":
     : if __name__ = "__main__":
         main() 위치 조정
 
+        
 2) 260806 
     + output tail 은 어떻게 처리하면 좋을지?
     + feedback 이 1이상의 값이 되어버리면 점점 소리가 증폭
@@ -300,8 +357,10 @@ if __name__ == "__main__":
 
 
 3) 260807
+    +for i in range(len(input_signal)):
+    : 때문에 입력길이만큼만 output 을 계산하고 있음
+    => 근데 delay_buffer 에는 이미 입력이 끝난뒤에 재생될 feedback 들도 저장되어 있음
 
-    ~ 왜... 딜레이타임에 따라서 총 output wav 의 길이가 달라지지? 일정하게 하려면
     +plot 구성하기
 
 
