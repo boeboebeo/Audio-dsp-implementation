@@ -45,7 +45,7 @@ def main():
     # 전체 순서 조립
 
     sample_rate = 48000
-    freq = 1000 #Hz
+    freq = 50 #Hz
     duration = 1.0 #s
 
     # delay_ms = 100 #밑에서 한번에 처리할 예정
@@ -75,7 +75,8 @@ def main():
         "impulse": [],
         "sine" : [],
         "noise" : []
-    } #빈 배열 하나 만들어서 그 내용 다 모을 예정
+    } 
+    #빈 배열 하나 만들어서 그 내용 다 모을 예정
 
     for signal_name, signal in signals:
         for delay_ms in delay_times:
@@ -87,12 +88,18 @@ def main():
                     sample_rate
                 )
 
+                #feedback , delay time 에 따른 tail 계산
+                tail = calc_tail_samples(
+                    delay_samples, feedback
+                    )
+
                 #delay apply
                 output_signal = apply_delay_with_feedback(
                     signal,
                     delay_samples,
                     mix,
-                    feedback
+                    feedback,
+                    tail
                 )
 
                 #save wav
@@ -104,11 +111,16 @@ def main():
                 results[signal_name].append({
                     "delay_ms" : delay_ms,
                     "feedback" : feedback,
-                    "output" : output_signal # '=' 아니고 ':' 이여야 함!
+                    "output" : output_signal, # '=' 아니고 ':' 이여야 함!
+                    "tail" : tail
                 })
+
+                
 
     #plot 
     plot_delay(results, sample_rate)
+
+    
 
 
 
@@ -151,18 +163,18 @@ def apply_delay(input_signal, delay_samples, mix):
 
 
 #Feedback 있는 버전
-def apply_delay_with_feedback(input_signal, delay_samples, mix, feedback):
+def apply_delay_with_feedback(input_signal, delay_samples, mix, feedback, tail):
     
     #출력
     #ouput length 가 짧으면 딜레이로 인해서 생기는 늘어난 시간은 나오지 않게됨 
-    output_length = len(input_signal) + delay_samples*10
+    output_length = len(input_signal) + tail
     output = np.zeros(output_length)
 
         #input_signal 은 len() 필요
         #output_length 는 이미 int 라서 len() 없어야 함 (이미 길이 숫자)
 
     #Delay buffer
-    delay_buffer = np.zeros(len(input_signal) + delay_samples*10)
+    delay_buffer = np.zeros(len(input_signal) + tail)
         #delay_samples 만큼의 index 더 늘린 공간
     
 
@@ -251,6 +263,21 @@ def ms_to_samples(delay_ms, sample_rate):
 
     return delay_samples
 
+
+
+def calc_tail_samples(delay_samples, feedback, threshold_db = -60):
+        #feedback 과 delay time 에 따라서 달라지게 될 audio tail을 계산하기 위한 함수
+        #이렇게 계산해서 +tail 했더니 각 feedback 에 따라서 없어질때까지(-60dB될때까지) 사운드 다 들을 수 있음
+    if feedback <= 0:
+        return delay_samples #feedback 없으면 tail 최소한으로
+    
+    threshold = 10** (threshold_db / 20) # -60dB -> 0.001
+    n_repeats = np.log(threshold) / np.log(feedback)
+    """feedback 을 반영하여 tail 길이를 설정한다면 
+    등비수열
+    """
+    
+    return int(delay_samples * n_repeats)
     
 
 
@@ -277,16 +304,21 @@ def save_wav(signal_name, delay_ms, feedback, output, sample_rate):
             #위에서 filepath = .. 에서 이미 file_name 넘겼기 때문에 또 넘기면 안됨
 
 
-def plot_delay(results, sample_rate):
 
-    fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+def plot_delay(results, sample_rate):
 
     for signal_name in ["impulse", "sine"]:
 
         signal_results = results[signal_name]
+
+        fig, axes = plt.subplots(3, 3, figsize=(12, 8))
         axes = axes.flatten()
+            #2차원을 -> 1차원으로 펴기
+            #[axes[0][0].....axes[2][2]] 인 2차원 배열을
+            #[axes[0], axes[1], ..., axes[8]] 이런 1차원으로 펼쳐줌
 
         for ax, result in zip(axes, signal_results):
+                #zip : 두 리스트(axes, signal_results)를 같은 인덱스끼리 튜플로 묶어주는 함수
 
             output = result["output"]
             delay_ms = result["delay_ms"]
@@ -295,14 +327,21 @@ def plot_delay(results, sample_rate):
             time = np.arange(len(output)) / sample_rate
             
             ax.plot(time, output)
+            if signal_name == "sine":
+                ax.set_xlim(0, 0.5)
+                    #너무 높은 주파수를 그래프에 표현하려니 해상도가 너무 떨어짐
+                    #그냥 sine 파는 앞에만 보자
+
+            ax.set_xlabel("Time(s)")
 
             ax.set_title(
                 f"Delay {delay_ms}ms / Feedback : {feedback}"
             )
 
-
-    plt.tight_layout()
-    plt.show()
+        fig.suptitle(f"{signal_name} delay")
+        plt.tight_layout(rect=[0, 0, 1, 0.98])  # 위쪽 2% 공간을 suptitle에 양보
+        plt.show()
+        # 이렇게 첫번째 for문 안에 들어있어야 impulse 한번, sine 한번 만들어짐
 
 
     
@@ -316,15 +355,6 @@ if __name__ == "__main__":
     #이게 함수 위에 있었더니 애초에 그 밑에 있는 함수들을 인지못함 
     #python 은 위 -> 아래로 읽어나가기 때문에 이 표시는 함수 맨 아래에 두기
     #직접 실행할때만 사용되는 코드 (다른 프로젝트에서 main() 실행안하고 함수만 가져다가 쓸때!)
-
-
-
-
-
-
-# def plot_spectrum():
-#     return 
-
 
 
 
@@ -345,7 +375,8 @@ if __name__ == "__main__":
     + output tail 은 어떻게 처리하면 좋을지?
     + feedback 이 1이상의 값이 되어버리면 점점 소리가 증폭
         => 이걸 어떻게 해결?
-        feedback = np.clip(feedback, 0, 0.99)    ?
+        feedback = np.clip(feedback, 0, 0.99)  
+        : 나중에 실제로 사용자 입력으로 받게 된다면 clipping 처리 해줘야함
 
     + 만약 delay_samples = 0 이라면 
     delay_buffer[i+delay_samples] = dry_signal + delayed * feedback
@@ -362,6 +393,20 @@ if __name__ == "__main__":
     => 근데 delay_buffer 에는 이미 입력이 끝난뒤에 재생될 feedback 들도 저장되어 있음
 
     +plot 구성하기
+    : for문으로 한번에 구성하기
+    1. 각 페이지의 대제목 -> Impulse, sine delay 
+    2. 시간 넓혀서 보기. 딜레이가 보여야 하니까 
+    3. flatten(), for _, _ in zip(_, _) 차이 확인
+
+    +output 의 길이가 feedback 에 비해 턱없이 부족함!
+    : feedback 이 있는 딜레이는 각 반복마다 feedback 배씩 감쇠하는 등비수열임
+    => 따로 필요한 tail 길이를 계산하는 함수를 만들자!
+
+    +IndexError: index 72000 is out of bounds for axis 0 with size 72000
+    => error 발생. 1칸 초과하여 발생한 에러임
+        .. 내부 전체 길이값 하나 수정안해서 생겼었음
+
+    +
 
 
     """
