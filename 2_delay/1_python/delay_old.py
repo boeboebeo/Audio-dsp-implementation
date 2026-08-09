@@ -6,6 +6,8 @@
     : y[n] = x[n - D] <- 현재 출력 샘플은 D 만큼 과거의 입력샘플을 가져온다.
 
     //여기서는 구현 안되지만 juce 에서는 실시간 조절이기때문에 Circular Buffer를 사용하게 됨
+    => 이걸 실시간 구현으로 처리할때는 modulo 연산이 추가됨 (% buffersize)
+    => & 실시간으로 노브조정시 값이 튀지 않게 스무딩 처리도 해야함 (juce::SmoothedValue 처리)
 
     1. Delay time
     x[n] (input)                         
@@ -27,6 +29,7 @@
 
     3. Mix
     : y[n] = x[n](dry) + x[n-D](wet)
+    : y[n] = x[n]*(1-mix) + x[n-D]*mix
 
 3) dB, time 제어
 4) save wav file
@@ -50,7 +53,7 @@ def main():
 
     # delay_ms = 100 #밑에서 한번에 처리할 예정
     mix = 0.5  # 0 ~ 1.0 까지의 범위 (%)
-    # feedback = 0.2 # 0 ~ 1.0까지의 범위 (%)
+    # feedback = 0.2 # 0 ~ 1.0까지의 범위 (%) #밑에서 한번에 처리할 예정
 
     num_samples = int(sample_rate*duration) 
 
@@ -184,6 +187,7 @@ def apply_delay_with_feedback(input_signal, delay_samples, mix, feedback, tail):
 
 
         #현재 입력 (입력이 아직 존재한다면)
+        #위에서 output_length를 feedback 에 따라서 길게 처리함으로써 input_signal 의 길이가 끝나면 0으로 처리해줘야함
         if i < len(input_signal):
             dry_signal = input_signal[i]
         
@@ -191,7 +195,7 @@ def apply_delay_with_feedback(input_signal, delay_samples, mix, feedback, tail):
             dry_signal = 0.0
 
 
-        #Delay buffer 에서 읽기
+        #Delay buffer 에서 읽기 (n sample 전에 만들어진 feedback 으로 인한 delay_buffer[i])
         delayed = delay_buffer[i] 
             #과거에 delay_buffer[i]에 저장해둔 값이 지금 영향을 받게 함
 
@@ -203,6 +207,8 @@ def apply_delay_with_feedback(input_signal, delay_samples, mix, feedback, tail):
         #delay buffer 는 Feedback loop 내부의 상태 (state) <- 다음 반복을 위한 에너지를 저장하는 곳
         if i + delay_samples < output_length:
             delay_buffer[i+delay_samples] = dry_signal + delayed * feedback
+            # i + delay_samples 의 길이가 output_length 보다 작을때 까지만 계산
+            # 그 길이만 가지고 있기떄문에 
             
 
     return output
@@ -310,6 +316,7 @@ def plot_delay(results, sample_rate):
     for signal_name in ["impulse", "sine"]:
 
         signal_results = results[signal_name]
+            #위에서 애초에 impulse 랑 sine 의 파라미터들을 따로 넣어놨기 때문에 가능함
 
         fig, axes = plt.subplots(3, 3, figsize=(12, 8))
         axes = axes.flatten()
@@ -326,7 +333,7 @@ def plot_delay(results, sample_rate):
 
             time = np.arange(len(output)) / sample_rate
             
-            ax.plot(time, output)
+            ax.plot(time, output)   # x축 = time, y축 = output 
             if signal_name == "sine":
                 ax.set_xlim(0, 0.5)
                     #너무 높은 주파수를 그래프에 표현하려니 해상도가 너무 떨어짐
@@ -405,8 +412,6 @@ if __name__ == "__main__":
     +IndexError: index 72000 is out of bounds for axis 0 with size 72000
     => error 발생. 1칸 초과하여 발생한 에러임
         .. 내부 전체 길이값 하나 수정안해서 생겼었음
-
-    +
 
 
     """
