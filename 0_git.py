@@ -1,7 +1,7 @@
 """
 
 git add .
-git commit -m "feat: WavWriter"
+git commit -m "docs: 전체 code 정리 및 주석 보완"
 git push origin main
 
 wip : work in progress. 아직 작업중(미완인 프로젝트 올릴때 쓰는 커밋 컨벤션(관습))
@@ -48,6 +48,9 @@ def plot_waveform():
 
 def plot_spectrum():
 
+
+**단축키**
+cmd + option + f : 글자 다 바꾸기
 
 
 """
