@@ -30,6 +30,10 @@ using RBJ Cookbook
 
 """
 
+import numpy as np
+
+
+
 #내가 짠 구조
 def basic_2nd_IIR_structure():
     input_signal = [0, 0, 0, 0, 0, 0, 0]
@@ -68,14 +72,32 @@ def basic_2nd_IIR_structure():
 
         print(y)
  
-input_signal = [1, 0, 0, 0, 0, 0]
 
-#coefficients
-b0 = 0.2
-b1 = 1.5
-b2 = 0.9
-a1 = 1.3
-a2 = 0.3
+def main():
+    input_signal = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+    #coefficients
+    b0 = 3.0
+    b1 = 3.9
+    b2 = 2.5
+    a1 = 1.2
+    a2 = 1.0
+    """
+    b, a coefficients 실험 log
+
+    1)b0, b1, b2 의 값을 키워도 결국 impulse response 의 진폭은 점점 작아지지만
+        - b 는 입력값에 곱해지는 계수
+    2)a1, a2의 값들은 키우면 점점 impulse response 의 진폭이 시간이 지나면서 커짐
+        - a 는 출력값에 곱해지는 계수 
+        => feedback 과 관련이 있는 계수이다.
+    """
+    print(input_signal)
+
+    biquad_filter_basic(input_signal, b0, b1, b2, a1, a2)
+    check_stability(a1, a2)
+
+
+
 
 
 #깔끔하게 정리한 구조
@@ -101,8 +123,40 @@ def biquad_filter_basic(input_signal, b0, b1, b2, a1, a2):
 
     return output
 
+def check_stability(a1, a2):
+    #Pole 은 unit circle 안에 있어야 안정적 (<1)
+    #우선 H(z)수식 -> Pole 을 구하기
 
-biquad_filter_basic(input_signal, b0, b1, b2, a1, a2)
+    poles = np.roots([1, a1, a2])
+        #np.roots : 다항식(polynomial)의 근(root)을 구해주는 함수 
+        #[1, a1, a2]는 -> z^2 + a1*z^1 + a2 의 이차방정식
+
+    #학습용
+    # if np.all(np.abs(poles) < 1) :
+    #     print(f"stability check ✅. poles: {poles}")
+    # else:
+    #     print(f"not stability ❌. poles: {poles}")
+
+    #실사용용
+    stable = np.all(np.abs(poles) < 1)
+
+    print(f"poles : {poles}")
+    print(f"stable : {stable}")
+
+    #poles가 [-0.6+0.8j -0.6-0.8j] 이렇게 나옴
+    #-0.6 은 실수부, +0.8j 는 허수부 
+    #|z| = 루트( (0.6)^2 + (0.8)^2 ) 
+         # 루트 (0.36 + 0.64) = 1 
+         # |z| = 1. 따라서 poles 는 안정적이지 않음
+
+    #나중에 다른 코드에서 사용하려면 true/false 를 반환하는 것이 유용함
+    return stable  #true or false 값 반환
+
+
 
 
 #def calculate_coefficients():
+
+
+if __name__ == "__main__":
+    main()

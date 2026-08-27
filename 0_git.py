@@ -1,7 +1,7 @@
 """
 
 git add .
-git commit -m "docs: biquad EQ basic"
+git commit -m "feat : stability check def making"
 git push origin main
 
 wip : work in progress. 아직 작업중(미완인 프로젝트 올릴때 쓰는 커밋 컨벤션(관습))
