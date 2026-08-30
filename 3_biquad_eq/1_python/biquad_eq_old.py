@@ -31,6 +31,7 @@ using RBJ Cookbook
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 
@@ -76,6 +77,8 @@ def basic_2nd_IIR_structure():
 def main():
     input_signal = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
+    fs = 48000
+
     #coefficients
     b0 = 3.0
     b1 = 3.9
@@ -93,8 +96,10 @@ def main():
     """
     print(input_signal)
 
-    biquad_filter_basic(input_signal, b0, b1, b2, a1, a2)
+    output = biquad_filter_basic(input_signal, b0, b1, b2, a1, a2)
     check_stability(a1, a2)
+    impulse_response(output, fs)
+    
 
 
 
@@ -180,6 +185,20 @@ p + p* = 2rcosθ
 pp* = r^2 (Euler)
 
 """
+
+def impulse_response(output, fs):
+
+    # time domain -> freq domain (fft 결과는 복소수 <- 절대값 취해야함)
+    # np.fft() : 는 함수가 아니고, fft 관련 기능 모아놓은 모듈
+    spectrum = np.fft.fft(output)
+    magnitude = np.abs(spectrum)
+    mag_db = 20*np.log10(magnitude + 1e-12)
+
+    fft_freq = np.fft.fftfreq(...., output)
+
+    plt.plot(fft_freq, mag_db)
+    plt.tight_layout()
+    plt.show()
 
 
 
