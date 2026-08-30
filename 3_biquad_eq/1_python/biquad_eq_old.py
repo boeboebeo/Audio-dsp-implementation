@@ -152,6 +152,35 @@ def check_stability(a1, a2):
     #나중에 다른 코드에서 사용하려면 true/false 를 반환하는 것이 유용함
     return stable  #true or false 값 반환
 
+"""a1, a2 와 pole 의 관계
+
+1) z-transform할 경우
+    : z^2 + a1*z + a2 = 0이 되고,
+
+    2차 방정식 근과 계수와의 관계에 의해
+    p1 + p2 = -a1
+    p1 * p2 = a2 
+
+2) example
+
+poles : [-0.6+0.8j -0.6-0.8j] 일 경우에
+
+p1 + p2 = -1.2 
+p1 * p2 = 복소켤레끼리 곱 (복소켤레 : 허수부의 부호를 반대로 바꾸는 것) : p, p*가 복소켤레 표시
+        = (-0.6)^2 + (0.8)^2 = 1
+
+    즉, a1 = 1.2, a2 = 1
+
+    => z^2 + 1.2z + 1 (이 식이 pole pair에 대응하는 denominator)
+
+3) 복소켤레 pole 을 각각 
+p = re^(jθ), p* = re^(-jθ)라고 한다면
+
+p + p* = 2rcosθ
+pp* = r^2 (Euler)
+
+"""
+
 
 
 
