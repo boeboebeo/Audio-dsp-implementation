@@ -75,7 +75,11 @@ def basic_2nd_IIR_structure():
  
 
 def main():
-    input_signal = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    # input_signal = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        #위와 같이 impulse 를 만들면 fft 문제 발생
+
+    input_signal = np.zeros(48000)
+    input_signal[0] = 1
 
     fs = 48000
 
@@ -94,11 +98,15 @@ def main():
         - a 는 출력값에 곱해지는 계수 
         => feedback 과 관련이 있는 계수이다.
     """
-    print(input_signal)
+
 
     output = biquad_filter_basic(input_signal, b0, b1, b2, a1, a2)
     check_stability(a1, a2)
-    impulse_response(output, fs)
+    plot_frequency_response(output, fs)
+
+    # 체크용
+    # print("N =", len(output))
+    # print("Frequency resolution =", fs/len(output), "Hz")
     
 
 
@@ -124,7 +132,7 @@ def biquad_filter_basic(input_signal, b0, b1, b2, a1, a2):
         y2 = y1
         y1 = y0
 
-        print([round(v, 6) for v in output])
+        # print([round(v, 6) for v in output])
 
     return output
 
@@ -186,17 +194,34 @@ pp* = r^2 (Euler)
 
 """
 
-def impulse_response(output, fs):
+def plot_frequency_response(output, fs):
 
     # time domain -> freq domain (fft 결과는 복소수 <- 절대값 취해야함)
     # np.fft() : 는 함수가 아니고, fft 관련 기능 모아놓은 모듈
-    spectrum = np.fft.fft(output)
-    magnitude = np.abs(spectrum)
-    mag_db = 20*np.log10(magnitude + 1e-12)
+    spectrum = np.fft.fft(output) #spectrum 은 각 freq bin 에서의 복소수 응답
+        #근데 np.fft.fft() 는 음수 + 양수 의 켤레대칭 정보를 다 보여줌!
+        #-> rfft()로 해결하면 편해진다.
+    magnitude = np.abs(spectrum) #복소수는 절대값 취하면 크기만 가져올 수 있음
+    mag_db = 20*np.log10(magnitude + 1e-12) #epsilon. dB 변환
 
-    fft_freq = np.fft.fftfreq(...., output)
+    fft_freq = np.fft.fftfreq(len(output), 1/fs)
+        #매개변수 n, d
+        #n : FFT를 몇 개의 샘플로 했는가?
+        #d : 샘플과 샘플사이의 시간 간격
 
-    plt.plot(fft_freq, mag_db)
+    half = len(output)//2
+        #위에서 그냥 np.fft.fft() 계산했기때문에 half까지만 필요했던 것
+        #그냥 np.fft.rfft() 로 계산하면 편해진다.
+
+    plt.plot(fft_freq[1:half], mag_db[1:half])
+        #fft_freq, mag_db 는 배열(array).
+        #근데 fftfreq()를 그대로 사용하면 +, - 대칭의 형태가 나오기 때문에 절반까지만 사용
+        #또한 fft freq 에는 0Hz 가 포함되어있으므로 맨 처음 인덱스 제외
+    plt.xlabel("Freq (Hz)")
+    plt.ylabel("Magnitude (dB)")
+    plt.xscale("log")
+    plt.xlim(20, 20000) 
+        #set_xlim() 은 axes 객체의 메서드
     plt.tight_layout()
     plt.show()
 
