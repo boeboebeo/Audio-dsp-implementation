@@ -87,6 +87,7 @@ def calculate_lowpass_coefficients(f0, Q, fs):
         #한 샘플당 위상 변화량(rad/sample)
 
     # 2. alpha 계산
+    # RBJ 계수 방법에서만 쓰이는 중간 변수 공식 = alpha
 
     alpha = np.sin(w0) / (2 * Q)
         #이 alpha 라는게 이렇게 특정 형태가 되는것은 
