@@ -40,8 +40,9 @@ def main():
     fs = 48000
     Q = 0.707
     f0 = 1000 
+    A = ..?
 
-    w0 = 2 * np.pi * (1/fs)
+    w0 = 2 * np.pi * (f0/fs)
     alpha = np.sin(w0) / 2 * Q
 
 
@@ -107,7 +108,7 @@ def calculate_notch_coefficients(fs, f0, Q, w0, alpha):
     return b0, b1, b2, a1, a2
 
 #Peak 
-def calculate_peaking_coefficients(fs, f0, Q, w0, alpha):
+def calculate_peaking_coefficients(fs, f0, Q, w0, alpha, A):
     b0 =   1 + alpha*A
     b1 =  -2*np.cos(w0)
     b2 =   1 - alpha*A
@@ -118,7 +119,7 @@ def calculate_peaking_coefficients(fs, f0, Q, w0, alpha):
     return b0, b1, b2, a1, a2
 
 #lowshelf
-def calculate_lowshelf_coefficients(fs, f0, Q, w0, alpha):
+def calculate_lowshelf_coefficients(fs, f0, Q, w0, alpha, A):
     b0 =    A*( (A+1) - (A-1)*np.cos(w0) + 2*sqrt(A)*alpha )
     b1 =  2*A*( (A-1) - (A+1)*np.cos(w0)                   )
     b2 =    A*( (A+1) - (A-1)*np.cos(w0) - 2*sqrt(A)*alpha )
@@ -129,8 +130,8 @@ def calculate_lowshelf_coefficients(fs, f0, Q, w0, alpha):
     return b0, b1, b2, a1, a2
 
 #highshelf
-def calculate_highshelf_coefficients(fs, f0, Q, w0, alpha):
-    b0 =    A*( (A+1) + (A-1)*np.cos(w0) + 2*sqrt(A)*alpha )
+def calculate_highshelf_coefficients(fs, f0, Q, w0, alpha, A):
+    b0 =    A*( (A+1) + (A-1)*np.cos(w0) + 2*np.sqrt(A)*alpha )
     b1 = -2*A*( (A-1) + (A+1)*np.cos(w0)                   )
     b2 =    A*( (A+1) + (A-1)*np.cos(w0) - 2*sqrt(A)*alpha )
     a0 =        (A+1) - (A-1)*np.cos(w0) + 2*sqrt(A)*alpha
@@ -142,10 +143,23 @@ def calculate_highshelf_coefficients(fs, f0, Q, w0, alpha):
 
 """A & sqrt(..) ?
 
-1) A란
+1) A란 (RBJ 공식에서의 중간 변수 중 하나)
+
+A = np.sqrt(10^(dBgain / 20))
+  =         10^(dBgain / 40)
+
+    **A^2 에서 파생... 왜 A^2 인거지?
+
+    - A = 10^(6/40)
+
 
 
 2) sqrt() 함수의 기능
+
+    **sqrt() : 제곱근(root)를 구하는 함수
+    ex. sqrt(0.81) = 루트(0.81) = 0.9
+        // 복소수 에서 원점에서 pole 까지의 거리를 구할때도 sqrt()가 사용됨
+        : r = 루트( (real)^2 + (imag)^2 ) 
 """
 
 #normalization 하는 함수
@@ -163,3 +177,9 @@ def normalize_coefficients(b0, b1, b2, a0, a1, a2):
 #filter processing
 def biquad_filter_basic(b0, b1, b2, a1, a2):
     
+
+    #state 처리
+    x2 = x1
+    x1 = x0
+    y2 = y1
+    y1 = 
