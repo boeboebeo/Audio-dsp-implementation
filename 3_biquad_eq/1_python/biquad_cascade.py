@@ -148,9 +148,14 @@ def calculate_highshelf_coefficients(fs, f0, Q, w0, alpha, A):
 A = np.sqrt(10^(dBgain / 20))
   =         10^(dBgain / 40)
 
-    **A^2 에서 파생... 왜 A^2 인거지?
+    ** A 또한 RBJ 에서 필터설계를 위해 정의한 변수
+        1) 우선 G = A^2 
+            //이렇게 우선 구조를 짜서 아래에서 A가 이렇게 나오게 됨
+        2) A^2 = 10^(dB/20)
+        3) A = 10^(dB/40)
 
-    - A = 10^(6/40)
+        // 이것 또한 alpha 와 같이 RBJ 에서 정의한  중간변수 
+
 
 
 
