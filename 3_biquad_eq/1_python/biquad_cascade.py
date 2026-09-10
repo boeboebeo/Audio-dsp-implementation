@@ -49,20 +49,51 @@ def main():
     input_signal[0] = 1
 
 
+    #COF 가 달라지면 w0, alpha 또한 다시 계산해줘야 함
     w0 = 2 * np.pi * (f0/fs)
     alpha = np.sin(w0) / (2 * Q)
 
 
+    #filtering 1
     b0, b1, b2, a0, a1, a2 = calculate_highshelf_coefficients(w0, alpha, A, sqrt_A)
 
     b0, b1, b2, a0, a1, a2 = normalize_coefficients(
         b0, b1, b2, a0, a1, a2
     )
 
-    output = biquad_filter_basic(input_signal, b0, b1, b2, a1, a2)
+    output1 = biquad_filter_basic(input_signal, b0, b1, b2, a1, a2)
+
+    #filtering 2
+    f0 = 10000
+    w0 = 2 * np.pi * (f0/fs)
+    alpha = np.sin(w0) / (2 * Q)
+
+    b0, b1, b2, a0, a1, a2 = calculate_lowpass_coefficients(w0, alpha)
+
+    b0, b1, b2, a0, a1, a2 = normalize_coefficients(
+        b0, b1, b2, a0, a1, a2
+    )
+
+    output2 = biquad_filter_basic(output1, b0, b1, b2, a1, a2)
+
+    #filtering 3
+    f0 = 100
+    w0 = 2 * np.pi * (f0/fs)
+    alpha = np.sin(w0) / (2 * Q)
+
+    b0, b1, b2, a0, a1, a2 = calculate_notch_coefficients(w0, alpha)
 
 
-    plot_response(input_signal, output, fs)
+    b0, b1, b2, a0, a1, a2 = normalize_coefficients(
+        b0, b1, b2, a0, a1, a2
+    )
+
+    output3 = biquad_filter_basic(output2, b0, b1, b2, a1, a2)
+
+    
+
+
+    plot_response(input_signal, output3, fs)
 
     
 
@@ -209,7 +240,7 @@ def plot_response(input_signal, output, fs):
     ax.set_title("before filtering")
     ax.set_xlabel("Frequency (Hz)")
     ax.set_ylabel("Magnitude (dB)")
-    ax.set_ylim(-3, 3)
+    ax.set_ylim(-20, 10)
     ax.set_xscale("log")
 
 
@@ -228,8 +259,9 @@ def plot_response(input_signal, output, fs):
     ax.set_title("after filtering")
     ax.set_xlabel("Frequency (Hz)")
     ax.set_ylabel("Magnitude (dB)")
-    ax.set_ylim(-3, 3)
+    ax.set_ylim(-20, 10)
     ax.set_xscale("log")
+    ax.set_xlim(20, 20000)
 
 
     plt.tight_layout()
